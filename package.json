@@ -1,0 +1,41 @@
+{
+  "name": "spend-gate",
+  "version": "0.1.0",
+  "description": "Local policy gate for paid agent calls. Decides sign, refuse, or ask a human before any signature, and keeps an on-disk ledger.",
+  "type": "module",
+  "bin": {
+    "spend-gate": "./dist/cli.js",
+    "spend-gate-mcp": "./dist/mcp.js"
+  },
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "node --import tsx --test test/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/cli.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.20.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jvanders22/spend-gate.git"
+  }
+}

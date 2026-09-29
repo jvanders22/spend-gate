@@ -1,0 +1,13 @@
+{
+  "budgetAtomic": "1000000",
+  "ceilingAtomic": "100000",
+  "humanThresholdAtomic": "50000",
+  "decimals": 6,
+  "symbol": "USDC",
+  "allowHosts": ["merchant.example"],
+  "networks": [],
+  "assets": [],
+  "allowPayTo": [],
+  "reservationTtlSeconds": 120,
+  "ledgerPath": "ledger.jsonl"
+}
