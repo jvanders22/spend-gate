@@ -106,7 +106,7 @@ Usage
   spend-gate probe <url> [--reserve]
 
 Options
-  --config <file>          Policy file. Else ./spend-gate.json, SPEND_GATE_CONFIG, or ~/.config/spend-gate/spend-gate.json
+  --config <file>          Policy file. Else SPEND_GATE_CONFIG, then ./spend-gate.json, then ~/.config/spend-gate/spend-gate.json
   --idempotency-key <key>  Reuse a key so a retry does not reserve twice
   --accept-index <n>       Pick the nth exact option in a challenge
   --json                   Print JSON
@@ -148,6 +148,9 @@ async function main(): Promise<void> {
       policy.assets.length === 0
         ? "assets is empty, so any asset string is allowed. Pin the token you accept."
         : `assets ${policy.assets.join(", ")}`,
+      policy.allowPayTo.length === 0
+        ? "allowPayTo is empty, so any payTo address is allowed. Pin the recipients you accept."
+        : `allowPayTo ${policy.allowPayTo.join(", ")}`,
     ];
     process.stdout.write(`${lines.join("\n")}\n`);
     return;

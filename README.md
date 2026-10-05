@@ -7,7 +7,7 @@ It is a library, a CLI, and an MCP server. It does not hold a key, does not sign
 ## What it checks, in order
 
 1. The challenge parses. Amounts are atomic integer strings (`"10000"`, not `0.01`). `exact` is the only scheme it prices. `upto` and `batch` are refused rather than guessed.
-2. Network, asset, and `payTo`, when those lists are set in the config.
+2. Network, asset, and `payTo`, when those lists are set in the config. An empty list here allows any value (unlike `allowHosts`).
 3. Hostname allowlist. `merchant.example` is exact. `*.merchant.example` is a subdomain, not the apex. An empty list refuses every host.
 4. Per-call ceiling.
 5. Remaining budget. Open reservations count. A call that does not fit is refused, and the remainder stays unspent.
@@ -47,9 +47,9 @@ Reservations expire. `decide`, `record`, `approve`, `deny`, and `expire` write t
 }
 ```
 
-Empty `networks`, `assets`, and `allowPayTo` allow any value. Pin them to the chain, token, and recipient you actually accept. The network string is matched exactly, so a merchant that sends `base-sepolia` will not match `eip155:84532`.
+Empty `networks`, `assets`, and `allowPayTo` allow any value — that is intentional fail-open, not a lock-down. An empty `allowHosts` is the opposite: it refuses every host. Pin `networks`, `assets`, and `allowPayTo` to the chain, token, and recipient you actually accept. Network strings are matched exactly and case-sensitively (`eip155:84532` ≠ `EIP155:84532`; a merchant that sends `base-sepolia` will not match `eip155:84532`). Asset and `payTo` matching is case-insensitive.
 
-The ledger path is resolved relative to the config file. The config is read from `--config`, then `./spend-gate.json`, then `SPEND_GATE_CONFIG`, then `~/.config/spend-gate/spend-gate.json`.
+The ledger path is resolved relative to the config file. The config is read from `--config`, then `SPEND_GATE_CONFIG`, then `./spend-gate.json` if it exists, then `~/.config/spend-gate/spend-gate.json`.
 
 ## CLI
 
