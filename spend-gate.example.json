@@ -5,7 +5,7 @@
   "decimals": 6,
   "symbol": "USDC",
   "allowHosts": ["merchant.example"],
-  "networks": [],
+  "networks": ["eip155:84532"],
   "assets": [],
   "allowPayTo": [],
   "reservationTtlSeconds": 120,

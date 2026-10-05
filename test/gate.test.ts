@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { GateError } from "../src/errors.ts";
 import { approve, decide, deny, evaluate, record, summarize } from "../src/gate.ts";
 import { parseChallenge } from "../src/parse.ts";
-import { loadPolicy, writeDefaultConfig, type Policy } from "../src/policy.ts";
+import { loadPolicy, resolveConfigPath, writeDefaultConfig, type Policy } from "../src/policy.ts";
 import { probe } from "../src/probe.ts";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -377,5 +377,42 @@ test("probe reads a local 402 and does not follow a redirect", async () => {
     assert.equal(redirect.kind, "redirect");
   } finally {
     await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+
+test("resolveConfigPath prefers --config, then SPEND_GATE_CONFIG, then ./spend-gate.json, then home", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "spend-gate-cfg-"));
+  const explicit = path.join(dir, "explicit.json");
+  const envFile = path.join(dir, "from-env.json");
+  const local = path.join(dir, "spend-gate.json");
+  fs.writeFileSync(explicit, "{}");
+  fs.writeFileSync(envFile, "{}");
+  fs.writeFileSync(local, "{}");
+
+  const prevEnv = process.env.SPEND_GATE_CONFIG;
+  const prevCwd = process.cwd();
+  try {
+    process.chdir(dir);
+    delete process.env.SPEND_GATE_CONFIG;
+
+    assert.equal(resolveConfigPath(explicit), path.resolve(explicit));
+
+    process.env.SPEND_GATE_CONFIG = envFile;
+    assert.equal(resolveConfigPath(), path.resolve(envFile));
+    assert.equal(resolveConfigPath(explicit), path.resolve(explicit));
+
+    delete process.env.SPEND_GATE_CONFIG;
+    assert.equal(resolveConfigPath(), path.resolve(local));
+
+    fs.unlinkSync(local);
+    assert.equal(
+      resolveConfigPath(),
+      path.join(os.homedir(), ".config", "spend-gate", "spend-gate.json"),
+    );
+  } finally {
+    process.chdir(prevCwd);
+    if (prevEnv === undefined) delete process.env.SPEND_GATE_CONFIG;
+    else process.env.SPEND_GATE_CONFIG = prevEnv;
   }
 });
