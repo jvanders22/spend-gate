@@ -1,4 +1,4 @@
-import type { Decision, LedgerSummary } from "./types.js";
+import type { Decision, LedgerEntry, LedgerSummary } from "./types.js";
 
 export function formatDecision(decision: Decision): string {
   const head =
@@ -54,5 +54,54 @@ export function formatLedger(summary: LedgerSummary): string {
   if (summary.truncated) lines.push("entries truncated to the latest 200. Pass --json for the same cap.");
   lines.push("This tool did not sign and did not move value.");
   for (const warning of summary.warnings) lines.push(`warning: ${warning}`);
+  return lines.join("\n");
+}
+
+const PHASE_SENTENCE: Record<string, string> = {
+  refused: "Refused by policy. Nothing was reserved.",
+  pending_human: "Waiting for a person. Nothing is reserved yet.",
+  reserved: "Approved and reserved. The caller has not reported a result yet.",
+  released: "Released. The reservation was given back and nothing was spent.",
+  denied: "A person denied it. Nothing was reserved.",
+  recorded: "Recorded. The caller reported what happened.",
+};
+
+const REFUND_SENTENCE: Record<string, string> = {
+  none_owed: "none owed",
+  not_refunded: "NOT refunded (this tool cannot reverse a payment)",
+  unknown: "unknown",
+  not_applicable: "not applicable, nothing was paid",
+};
+
+export function formatReceipt(entry: LedgerEntry): string {
+  const lines = [
+    `RECEIPT ${entry.idempotencyKey}`,
+    PHASE_SENTENCE[entry.phase] ?? entry.phase,
+    `bought    ${entry.resource}`,
+    `merchant  ${entry.host}`,
+    `amount    ${entry.amountFormatted}`,
+    `paid to   ${entry.payTo} on ${entry.network}`,
+    `why       ${entry.reason}`,
+    `when      ${entry.at}`,
+  ];
+  if (entry.settlement) {
+    lines.push(`outcome   settlement ${entry.settlement}, result ${entry.fulfilment ?? "unknown"}`);
+    lines.push(`refund    ${REFUND_SENTENCE[entry.refund ?? "unknown"]}`);
+    if (entry.reference) lines.push(`reference ${entry.reference} (caller-supplied, not verified)`);
+  }
+  if (entry.phase === "pending_human") lines.push(`approve   spend-gate approve ${entry.idempotencyKey}`);
+  lines.push("This tool did not sign and did not move value.");
+  return lines.join("\n");
+}
+
+export function formatPending(entries: LedgerEntry[]): string {
+  if (entries.length === 0) return "Nothing is waiting for a person.";
+  const lines: string[] = [];
+  for (const entry of entries) {
+    lines.push(
+      `${entry.idempotencyKey}  ${entry.amountFormatted}  ${entry.host}  ${entry.resource}`,
+      `  approve: spend-gate approve ${entry.idempotencyKey}    deny: spend-gate deny ${entry.idempotencyKey}`,
+    );
+  }
   return lines.join("\n");
 }

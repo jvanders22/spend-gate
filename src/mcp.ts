@@ -4,8 +4,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { GateError } from "./errors.js";
-import { formatDecision, formatLedger } from "./format.js";
-import { approve, decide, deny, evaluate, record, summarize } from "./gate.js";
+import { formatDecision, formatLedger, formatReceipt } from "./format.js";
+import { approve, decide, deny, evaluate, receiptFor, record, summarize } from "./gate.js";
 import { loadPolicy, resolveConfigPath } from "./policy.js";
 import { probe } from "./probe.js";
 import type { Decision, Fulfilment, Settlement } from "./types.js";
@@ -78,9 +78,13 @@ function asRecord(value: unknown): Record<string, unknown> {
   return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
 }
 
-function toolResult(decision: Decision) {
+function toolResult(decision: Decision, agentCanApprove = false) {
+  let text = formatDecision(decision);
+  if (decision.action === "ask_human" && !agentCanApprove) {
+    text += `\nA person must approve this outside this chat. Stop and tell them to run: spend-gate approve ${decision.idempotencyKey}\nThen call spend_gate_decide again with the same idempotency_key. You cannot approve it yourself.`;
+  }
   return {
-    content: [{ type: "text" as const, text: formatDecision(decision) }],
+    content: [{ type: "text" as const, text }],
     structuredContent: asRecord(decision),
   };
 }
@@ -108,7 +112,13 @@ function fulfilmentOf(args: { fulfilment?: Fulfilment; fulfillment?: Fulfilment 
   return value;
 }
 
-export function createServer(configPath: string): McpServer {
+export interface ServerOptions {
+  /** Expose spend_gate_approve and spend_gate_deny to the agent. Off by default: the agent being gated must not approve itself. */
+  allowAgentApproval?: boolean;
+}
+
+export function createServer(configPath: string, options: ServerOptions = {}): McpServer {
+  const agentCanApprove = options.allowAgentApproval === true;
   const policy = loadPolicy(configPath);
   const server = new McpServer({ name: "spend-gate-mcp-server", version: "0.1.0" });
 
@@ -130,7 +140,7 @@ export function createServer(configPath: string): McpServer {
           idempotencyKey: args.idempotency_key,
           acceptIndex: args.accept_index,
         });
-        return toolResult(decision);
+        return toolResult(decision, agentCanApprove);
       } catch (err) {
         return toolError(err);
       }
@@ -155,7 +165,7 @@ export function createServer(configPath: string): McpServer {
           idempotencyKey: args.idempotency_key,
           acceptIndex: args.accept_index,
         });
-        return toolResult(decision);
+        return toolResult(decision, agentCanApprove);
       } catch (err) {
         return toolError(err);
       }
@@ -186,46 +196,70 @@ export function createServer(configPath: string): McpServer {
           settlement: args.settlement as Settlement,
           reference: args.reference ?? null,
         });
-        return toolResult(decision);
+        return toolResult(decision, agentCanApprove);
       } catch (err) {
         return toolError(err);
       }
     },
   );
 
+  if (agentCanApprove) {
+    server.registerTool(
+      "spend_gate_approve",
+      {
+        title: "Approve a call that asked for a person",
+        description:
+          "Turn an ask_human decision into a reservation when a person has agreed. Re-checks the host, ceiling, and remaining budget. Does not sign.",
+        inputSchema: {
+          idempotency_key: z.string().describe("Key of a pending ask_human decision."),
+        },
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      },
+      async (args) => {
+        try {
+          return toolResult(await approve({ policy, idempotencyKey: args.idempotency_key }));
+        } catch (err) {
+          return toolError(err);
+        }
+      },
+    );
+
+    server.registerTool(
+      "spend_gate_deny",
+      {
+        title: "Deny a call that asked for a person",
+        description: "Refuse a pending ask_human decision. Nothing is reserved and the key stays denied.",
+        inputSchema: {
+          idempotency_key: z.string().describe("Key of a pending ask_human decision."),
+        },
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      },
+      async (args) => {
+        try {
+          return toolResult(await deny({ policy, idempotencyKey: args.idempotency_key }));
+        } catch (err) {
+          return toolError(err);
+        }
+      },
+    );
+  }
+
   server.registerTool(
-    "spend_gate_approve",
+    "spend_gate_receipt",
     {
-      title: "Approve a call that asked for a person",
+      title: "Read a plain-language receipt",
       description:
-        "Turn an ask_human decision into a reservation when a person has agreed. Re-checks the host, ceiling, and remaining budget. Does not sign.",
-      inputSchema: {
-        idempotency_key: z.string().describe("Key of a pending ask_human decision."),
-      },
-      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+        "Show what was bought, from whom, how much, why it was allowed or refused, and the refund status for one idempotency key. Also shows whether a person has approved a pending call. Read-only.",
+      inputSchema: { idempotency_key: z.string().describe("Key of any earlier decision.") },
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async (args) => {
       try {
-        return toolResult(await approve({ policy, idempotencyKey: args.idempotency_key }));
-      } catch (err) {
-        return toolError(err);
-      }
-    },
-  );
-
-  server.registerTool(
-    "spend_gate_deny",
-    {
-      title: "Deny a call that asked for a person",
-      description: "Refuse a pending ask_human decision. Nothing is reserved and the key stays denied.",
-      inputSchema: {
-        idempotency_key: z.string().describe("Key of a pending ask_human decision."),
-      },
-      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-    },
-    async (args) => {
-      try {
-        return toolResult(await deny({ policy, idempotencyKey: args.idempotency_key }));
+        const entry = await receiptFor(policy, args.idempotency_key);
+        return {
+          content: [{ type: "text" as const, text: formatReceipt(entry) }],
+          structuredContent: asRecord(entry),
+        };
       } catch (err) {
         return toolError(err);
       }
@@ -295,7 +329,7 @@ export function createServer(configPath: string): McpServer {
 
 async function main(): Promise<void> {
   const configPath = resolveConfigPath(process.env.SPEND_GATE_CONFIG);
-  const server = createServer(configPath);
+  const server = createServer(configPath, { allowAgentApproval: process.env.SPEND_GATE_ALLOW_AGENT_APPROVAL === "1" });
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }

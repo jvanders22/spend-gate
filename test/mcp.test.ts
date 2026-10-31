@@ -49,8 +49,7 @@ test("an agent can decide and record through the MCP server", async () => {
     for (const name of [
       "spend_gate_preview",
       "spend_gate_decide",
-      "spend_gate_approve",
-      "spend_gate_deny",
+      "spend_gate_receipt",
       "spend_gate_record",
       "spend_gate_ledger",
       "spend_gate_probe",

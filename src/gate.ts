@@ -489,6 +489,15 @@ function entryOf(state: KeyState, policy: Policy, now: Date): LedgerEntry {
   };
 }
 
+export async function receiptFor(policy: Policy, idempotencyKey: string, now: Date = new Date()): Promise<LedgerEntry> {
+  const key = requireKey(idempotencyKey);
+  return updateLedger(policy.ledgerPath, (loaded) => {
+    const state = fold(loaded.lines).keys.get(key);
+    if (!state) throw new GateError("not_found", `No decision for ${key}.`);
+    return { append: [], value: entryOf(state, policy, now) };
+  });
+}
+
 export async function summarize(policy: Policy, now: Date = new Date()): Promise<LedgerSummary> {
   return updateLedger(policy.ledgerPath, (loaded) => {
     const book = fold(loaded.lines);
