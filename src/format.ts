@@ -61,7 +61,6 @@ const PHASE_SENTENCE: Record<string, string> = {
   refused: "Refused by policy. Nothing was reserved.",
   pending_human: "Waiting for a person. Nothing is reserved yet.",
   reserved: "Approved and reserved. The caller has not reported a result yet.",
-  released: "Released. The reservation was given back and nothing was spent.",
   denied: "A person denied it. Nothing was reserved.",
   recorded: "Recorded. The caller reported what happened.",
 };
@@ -74,15 +73,19 @@ const REFUND_SENTENCE: Record<string, string> = {
 };
 
 export function formatReceipt(entry: LedgerEntry): string {
+  const released =
+    entry.settlement === "unsent"
+      ? "Released. The caller reported nothing was sent, so nothing was spent."
+      : "Released without a reported outcome (the reservation expired). Payment status is unknown: it may have been paid. Check your wallet.";
   const lines = [
     `RECEIPT ${entry.idempotencyKey}`,
-    PHASE_SENTENCE[entry.phase] ?? entry.phase,
+    entry.phase === "released" ? released : (PHASE_SENTENCE[entry.phase] ?? entry.phase),
     `bought    ${entry.resource}`,
     `merchant  ${entry.host}`,
     `amount    ${entry.amountFormatted}`,
     `paid to   ${entry.payTo} on ${entry.network}`,
     `why       ${entry.reason}`,
-    `when      ${entry.at}`,
+    `when      ${entry.recordedAt ?? entry.at}`,
   ];
   if (entry.settlement) {
     lines.push(`outcome   settlement ${entry.settlement}, result ${entry.fulfilment ?? "unknown"}`);

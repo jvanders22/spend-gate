@@ -486,6 +486,7 @@ function entryOf(state: KeyState, policy: Policy, now: Date): LedgerEntry {
     fulfilment: state.fulfilment ?? null,
     refund: state.refund ?? null,
     reference: state.reference ?? null,
+    recordedAt: state.recordedAt ?? null,
   };
 }
 
@@ -540,6 +541,17 @@ export async function summarize(policy: Policy, now: Date = new Date()): Promise
       valueMovedByThisTool: false,
     };
     return { append: [], value: summary };
+  });
+}
+
+export async function pendingEntries(policy: Policy, now: Date = new Date()): Promise<LedgerEntry[]> {
+  return updateLedger(policy.ledgerPath, (loaded) => {
+    const book = fold(loaded.lines);
+    const waiting = [...book.keys.values()]
+      .map((state) => entryOf(state, policy, now))
+      .filter((entry) => entry.phase === "pending_human")
+      .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
+    return { append: [], value: waiting };
   });
 }
 

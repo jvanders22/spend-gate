@@ -12,6 +12,12 @@ It never holds a key, never signs, and never moves value.
 npm install && npm run build && npx spend-gate init
 ```
 
+`init` writes `allowHosts: []`, which refuses every call. Edit `spend-gate.json` and add the merchant you trust before anything can be approved:
+
+```json
+"allowHosts": ["merchant.example"]
+```
+
 Add it to your agent (Claude Code, Cursor, any MCP client):
 
 ```json
@@ -27,7 +33,7 @@ npx spend-gate approve buy-1    # or: deny buy-1
 npx spend-gate receipt buy-1    # what was bought, why, refund status
 ```
 
-The MCP server does not expose approve or deny, so the agent cannot approve itself. Set `SPEND_GATE_ALLOW_AGENT_APPROVAL=1` to turn them on, only if you accept that.
+The MCP server does not expose approve or deny, so an agent that only has the MCP tools cannot approve itself. This is not a sandbox: an agent with shell access can run `spend-gate approve` itself, or edit the ledger and config files. To keep the boundary, run the agent without shell access to the gate's config and ledger. Setting `SPEND_GATE_ALLOW_AGENT_APPROVAL=1` exposes approve and deny over MCP; only do that if you accept the agent approving its own spend.
 
 ## What it checks, in order
 

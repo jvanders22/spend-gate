@@ -126,3 +126,32 @@ test("pending lists waiting calls and receipt reads like a receipt", () => {
 
   assert.notEqual(cli(configPath, "receipt", "nope").status, 0);
 });
+
+test("pending scans the whole ledger, not just the newest 200", () => {
+  const { configPath } = setup();
+  const dir = path.dirname(configPath);
+  const call = { resource: "https://merchant.example/a", host: "merchant.example", amount: "50000", network: "eip155:84532", asset: "0xabc", payTo: "0xdef", scheme: "exact" };
+  const lines: string[] = [];
+  const t0 = Date.parse("2026-01-01T00:00:00Z");
+  lines.push(JSON.stringify({ v: 1, type: "pending_human", at: new Date(t0).toISOString(), idempotencyKey: "old-pending", call, reason: "big" }));
+  for (let i = 0; i < 205; i++) {
+    lines.push(JSON.stringify({ v: 1, type: "refusal", at: new Date(t0 + (i + 1) * 1000).toISOString(), idempotencyKey: `r-${i}`, call, reason: "no" }));
+  }
+  fs.writeFileSync(path.join(dir, "ledger.jsonl"), `${lines.join("\n")}\n`);
+  const pending = cli(configPath, "pending");
+  assert.equal(pending.status, 3);
+  assert.match(pending.stdout, /old-pending/);
+});
+
+test("receipt of an expired reservation says payment status is unknown", () => {
+  const { configPath } = setup();
+  const dir = path.dirname(configPath);
+  const call = { resource: "https://merchant.example/a", host: "merchant.example", amount: "10000", network: "eip155:84532", asset: "0xabc", payTo: "0xdef", scheme: "exact" };
+  const lines = [
+    { v: 1, type: "reservation", at: "2026-01-01T00:00:00.000Z", idempotencyKey: "exp-1", call, reason: "ok", expiresAt: "2026-01-01T00:02:00.000Z" },
+  ];
+  fs.writeFileSync(path.join(dir, "ledger.jsonl"), `${lines.map((l) => JSON.stringify(l)).join("\n")}\n`);
+  const receipt = cli(configPath, "receipt", "exp-1").stdout;
+  assert.match(receipt, /status is unknown/);
+  assert.doesNotMatch(receipt, /nothing was spent/);
+});

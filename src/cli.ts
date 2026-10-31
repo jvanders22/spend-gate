@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { GateError } from "./errors.js";
 import { formatDecision, formatLedger, formatPending, formatReceipt } from "./format.js";
-import { approve, decide, deny, evaluate, exitCode, expireReservations, receiptFor, record, summarize } from "./gate.js";
+import { approve, decide, deny, evaluate, exitCode, expireReservations, pendingEntries, receiptFor, record, summarize } from "./gate.js";
 import { loadPolicy, resolveConfigPath, writeDefaultConfig } from "./policy.js";
 import { probe } from "./probe.js";
 import type { Decision, Fulfilment, Settlement } from "./types.js";
@@ -172,8 +172,7 @@ async function main(): Promise<void> {
     return;
   }
   if (parsed.command === "pending") {
-    const summary = await summarize(policy);
-    const waiting = summary.entries.filter((entry) => entry.phase === "pending_human");
+    const waiting = await pendingEntries(policy);
     process.stdout.write(asJson ? `${JSON.stringify(waiting, null, 2)}\n` : `${formatPending(waiting)}\n`);
     process.exitCode = waiting.length > 0 ? 3 : 0;
     return;
