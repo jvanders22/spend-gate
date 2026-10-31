@@ -1,6 +1,6 @@
 # spend-gate
 
-An agent can ask to spend. Only a person can say yes.
+An agent can ask to spend. Only a person can say yes (over MCP).
 spend-gate sits in front of any paid call (x402 today): it checks budget, merchant, and recipient, parks big spends for a human, and writes a receipt you can read.
 It never holds a key, never signs, and never moves value.
 
