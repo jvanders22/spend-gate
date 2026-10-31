@@ -486,7 +486,17 @@ function entryOf(state: KeyState, policy: Policy, now: Date): LedgerEntry {
     fulfilment: state.fulfilment ?? null,
     refund: state.refund ?? null,
     reference: state.reference ?? null,
+    recordedAt: state.recordedAt ?? null,
   };
+}
+
+export async function receiptFor(policy: Policy, idempotencyKey: string, now: Date = new Date()): Promise<LedgerEntry> {
+  const key = requireKey(idempotencyKey);
+  return updateLedger(policy.ledgerPath, (loaded) => {
+    const state = fold(loaded.lines).keys.get(key);
+    if (!state) throw new GateError("not_found", `No decision for ${key}.`);
+    return { append: [], value: entryOf(state, policy, now) };
+  });
 }
 
 export async function summarize(policy: Policy, now: Date = new Date()): Promise<LedgerSummary> {
@@ -531,6 +541,17 @@ export async function summarize(policy: Policy, now: Date = new Date()): Promise
       valueMovedByThisTool: false,
     };
     return { append: [], value: summary };
+  });
+}
+
+export async function pendingEntries(policy: Policy, now: Date = new Date()): Promise<LedgerEntry[]> {
+  return updateLedger(policy.ledgerPath, (loaded) => {
+    const book = fold(loaded.lines);
+    const waiting = [...book.keys.values()]
+      .map((state) => entryOf(state, policy, now))
+      .filter((entry) => entry.phase === "pending_human")
+      .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
+    return { append: [], value: waiting };
   });
 }
 

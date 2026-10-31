@@ -1,8 +1,39 @@
 # spend-gate
 
-A local gate for paid agent calls. It decides whether a call may be signed, and it writes the receipt to a ledger on disk.
+An agent can ask to spend. Only a person can say yes (over MCP).
+spend-gate sits in front of any paid call (x402 today): it checks budget, merchant, and recipient, parks big spends for a human, and writes a receipt you can read.
+It never holds a key, never signs, and never moves value.
 
-It is a library, a CLI, and an MCP server. It does not hold a key, does not sign, and does not move value.
+![A decide, human approve, and receipt run](docs/demo.svg)
+
+## Quickstart
+
+```bash
+npm install && npm run build && npx spend-gate init
+```
+
+`init` writes `allowHosts: []`, which refuses every call. Edit `spend-gate.json` and add the merchant you trust before anything can be approved:
+
+```json
+"allowHosts": ["merchant.example"]
+```
+
+Add it to your agent (Claude Code, Cursor, any MCP client):
+
+```json
+{ "mcpServers": { "spend-gate": { "command": "node", "args": ["/abs/path/to/spend-gate/dist/mcp.js"],
+  "env": { "SPEND_GATE_CONFIG": "/abs/path/spend-gate.json" } } } }
+```
+
+The agent calls `spend_gate_decide` before it pays. Above your threshold it gets `ask_human`. You approve in another terminal:
+
+```bash
+npx spend-gate pending          # what is waiting
+npx spend-gate approve buy-1    # or: deny buy-1
+npx spend-gate receipt buy-1    # what was bought, why, refund status
+```
+
+The MCP server does not expose approve or deny, so an agent that only has the MCP tools cannot approve itself. This is not a sandbox: an agent with shell access can run `spend-gate approve` itself, or edit the ledger and config files. To keep the boundary, run the agent without shell access to the gate's config and ledger. Setting `SPEND_GATE_ALLOW_AGENT_APPROVAL=1` exposes approve and deny over MCP; only do that if you accept the agent approving its own spend.
 
 ## What it checks, in order
 
@@ -64,8 +95,10 @@ npx spend-gate decide \
   --asset token-usdc-test \
   --pay-to payee-test \
   --idempotency-key job-1
+npx spend-gate pending
 npx spend-gate approve job-1
 npx spend-gate record job-1 --fulfilment rejected --settlement simulated --reference local-1
+npx spend-gate receipt job-1
 npx spend-gate ledger
 npx spend-gate probe https://merchant.example/search
 ```
@@ -117,9 +150,9 @@ The stdio server is `spend-gate-mcp`. Point `SPEND_GATE_CONFIG` at the config fi
 }
 ```
 
-Tools: `spend_gate_preview`, `spend_gate_decide`, `spend_gate_approve`, `spend_gate_deny`, `spend_gate_record`, `spend_gate_ledger`, `spend_gate_probe`.
+Tools: `spend_gate_preview`, `spend_gate_decide`, `spend_gate_record`, `spend_gate_receipt`, `spend_gate_ledger`, `spend_gate_probe`. `spend_gate_approve` and `spend_gate_deny` are off unless `SPEND_GATE_ALLOW_AGENT_APPROVAL=1`.
 
-A policy refusal is a normal tool result with `action: "refuse"`. It is not a transport error, and retrying it will not move the payment. `ask_human` is waiting for `spend_gate_approve` or `spend_gate_deny`.
+A policy refusal is a normal tool result with `action: "refuse"`. It is not a transport error, and retrying it will not move the payment. `ask_human` is waiting for a person to run `spend-gate approve` or `deny`; call `spend_gate_decide` again with the same key afterwards.
 
 ## Development
 

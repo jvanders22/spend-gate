@@ -77,6 +77,7 @@ export interface LedgerEntry {
   fulfilment: Fulfilment | null;
   refund: Refund | null;
   reference: string | null;
+  recordedAt: string | null;
 }
 
 export interface LedgerSummary {

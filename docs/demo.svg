@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="564" viewBox="0 0 1180 564" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="14">
+<rect width="1180" height="564" rx="10" fill="#0d1117"/>
+<circle cx="22" cy="20" r="6" fill="#ff5f56"/><circle cx="42" cy="20" r="6" fill="#ffbd2e"/><circle cx="62" cy="20" r="6" fill="#27c93f"/>
+<text x="24" y="52" fill="#7ee787" xml:space="preserve">$ spend-gate decide --resource https://merchant.example/report --amount 50000 --network eip155:84532 --asset usdc --pay-to 0xPAYEE --idempotency-ke...</text>
+<text x="24" y="72" fill="#ffa657" xml:space="preserve">ASK A PERSON</text>
+<text x="24" y="92" fill="#c9d1d9" xml:space="preserve">Amount 50000 is above the human threshold 20000. No reservation was taken. A person has to run: spend-gate approve &lt;key&gt;</text>
+<text x="24" y="112" fill="#c9d1d9" xml:space="preserve">resource  https://merchant.example/report</text>
+<text x="24" y="132" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="24" y="152" fill="#7ee787" xml:space="preserve">$ spend-gate pending</text>
+<text x="24" y="172" fill="#c9d1d9" xml:space="preserve">buy-1  0.05 USDC  merchant.example  https://merchant.example/report</text>
+<text x="24" y="192" fill="#79c0ff" xml:space="preserve">  approve: spend-gate approve buy-1    deny: spend-gate deny buy-1</text>
+<text x="24" y="212" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="24" y="232" fill="#7ee787" xml:space="preserve">$ spend-gate approve buy-1</text>
+<text x="24" y="252" fill="#ffa657" xml:space="preserve">SIGN</text>
+<text x="24" y="272" fill="#c9d1d9" xml:space="preserve">A person approved this call. A local reservation expires at 2026-10-31T08:42:25.790Z. This tool did not sign.</text>
+<text x="24" y="292" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="24" y="312" fill="#7ee787" xml:space="preserve">$ spend-gate receipt buy-1</text>
+<text x="24" y="332" fill="#ffa657" xml:space="preserve">RECEIPT buy-1</text>
+<text x="24" y="352" fill="#c9d1d9" xml:space="preserve">Recorded. The caller reported what happened.</text>
+<text x="24" y="372" fill="#c9d1d9" xml:space="preserve">bought    https://merchant.example/report</text>
+<text x="24" y="392" fill="#c9d1d9" xml:space="preserve">merchant  merchant.example</text>
+<text x="24" y="412" fill="#c9d1d9" xml:space="preserve">amount    0.05 USDC</text>
+<text x="24" y="432" fill="#c9d1d9" xml:space="preserve">paid to   0xPAYEE on eip155:84532</text>
+<text x="24" y="452" fill="#c9d1d9" xml:space="preserve">why       The caller attested settlement signed and accepted the result. Nothing is owed back. This tool did not move the payment.</text>
+<text x="24" y="472" fill="#c9d1d9" xml:space="preserve">when      2026-10-31T08:40:25.790Z</text>
+<text x="24" y="492" fill="#c9d1d9" xml:space="preserve">outcome   settlement signed, result accepted</text>
+<text x="24" y="512" fill="#c9d1d9" xml:space="preserve">refund    none owed</text>
+<text x="24" y="532" fill="#c9d1d9" xml:space="preserve">reference tx-9f2 (caller-supplied, not verified)</text>
+</svg>

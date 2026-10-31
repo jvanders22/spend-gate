@@ -2,8 +2,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { GateError } from "./errors.js";
-import { formatDecision, formatLedger } from "./format.js";
-import { approve, decide, deny, evaluate, exitCode, expireReservations, record, summarize } from "./gate.js";
+import { formatDecision, formatLedger, formatPending, formatReceipt } from "./format.js";
+import { approve, decide, deny, evaluate, exitCode, expireReservations, pendingEntries, receiptFor, record, summarize } from "./gate.js";
 import { loadPolicy, resolveConfigPath, writeDefaultConfig } from "./policy.js";
 import { probe } from "./probe.js";
 import type { Decision, Fulfilment, Settlement } from "./types.js";
@@ -98,6 +98,8 @@ Usage
   spend-gate init [--config file]
   spend-gate decide  --challenge <file|-> | (--resource --amount --network --asset --pay-to)
   spend-gate preview --challenge <file|-> | (--resource --amount --network --asset --pay-to)
+  spend-gate pending
+  spend-gate receipt <key>
   spend-gate approve <key>
   spend-gate deny <key>
   spend-gate record <key> --fulfilment accepted|rejected|unknown --settlement signed|simulated|unsent [--reference text]
@@ -167,6 +169,19 @@ async function main(): Promise<void> {
   if (parsed.command === "ledger") {
     const summary = await summarize(policy);
     process.stdout.write(asJson ? `${JSON.stringify(summary, null, 2)}\n` : `${formatLedger(summary)}\n`);
+    return;
+  }
+  if (parsed.command === "pending") {
+    const waiting = await pendingEntries(policy);
+    process.stdout.write(asJson ? `${JSON.stringify(waiting, null, 2)}\n` : `${formatPending(waiting)}\n`);
+    process.exitCode = waiting.length > 0 ? 3 : 0;
+    return;
+  }
+  if (parsed.command === "receipt") {
+    const key = parsed.position[0] ?? idempotencyKey;
+    if (!key) throw new GateError("usage", "spend-gate receipt <key>");
+    const entry = await receiptFor(policy, key);
+    process.stdout.write(asJson ? `${JSON.stringify(entry, null, 2)}\n` : `${formatReceipt(entry)}\n`);
     return;
   }
   if (parsed.command === "expire") {
